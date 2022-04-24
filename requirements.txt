@@ -1,0 +1,4 @@
+// Arduino "Tools - Manage Libraries" to add libraries
+// Arduino "工具 - 管理库" 以添加库
+
+DHT sensor library by Adafruit
