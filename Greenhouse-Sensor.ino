@@ -1,4 +1,5 @@
 #include <EEPROM.h>
+#include <WiFi.h>
 #include <BLEDevice.h>
 #include "DHT.h"
 
@@ -7,15 +8,20 @@
 //#define DHTTYPE DHT22
 //#define DHTTYPE DHT21
 
-#define SERVICE_UUID "67e1caa4-8810-4324-8228-752b7a2639f9"        // random Service UUID
-#define CHARACTERISTIC_UUID "6c4c233c-d35c-4487-8414-8bffe476e6be" // random Characteristic UUID
+#define SERVICE_UUID "67e1caa4-8810-4324-8228-752b7a2639f9"  // random Service UUID
+#define SensorID_UUID "6c4c233c-d35c-4487-8414-8bffe476e6be" // random Characteristic UUID
+#define WIFI_UUID "6c4c233c-d35c-4487-8414-8bffe476e6bf"     // random Characteristic UUID
+
+char *wifi_ssid = "";
+char *wifi_password = "";
+#define MAX_WIFI_LENGTH 30
 
 string deviceName = "Greenhouse-Sensor";
 string sensorID = "";
 
 DHT dht(DHTPIN, DHTTYPE);
 
-class MyServerCallbacks : public BLEServerCallbacks
+class BLEServerCallbacks : public BLEServerCallbacks
 {
     void onConnect(BLEServer *pServer)
     {
@@ -28,7 +34,7 @@ class MyServerCallbacks : public BLEServerCallbacks
     };
 };
 
-class MyCallbacks : public BLECharacteristicCallbacks
+class WriteSesorIDCallbacks : public BLECharacteristicCallbacks
 {
     void onWrite(BLECharacteristic *pCharacteristic)
     {
@@ -45,7 +51,7 @@ class MyCallbacks : public BLECharacteristicCallbacks
         Serial.println(value_s);
 
         // Write to EEPROM
-        EEPROM.begin(17);
+        EEPROM.begin(160);
         for (int i = 0; i < 16; i++)
         {
             EEPROM.write(i, value_s[i]);
@@ -55,7 +61,16 @@ class MyCallbacks : public BLECharacteristicCallbacks
     };
 };
 
-void setup()
+class WriteWiFiCallbacks : public BLECharacteristicCallbacks
+{
+    void onWrite(BLECharacteristic *pCharacteristic)
+    {
+        
+    }
+}
+
+void
+setup()
 {
     // Init Serial
     Serial.begin(9600);
@@ -64,12 +79,19 @@ void setup()
     BLEDevice::init(deviceName);
     BLEServer *pServer = BLEDevice::createServer();
     BLEService *pService = pServer->createService(SERVICE_UUID);
-    BLECharacteristic *pCharacteristic = pService->createCharacteristic(
-        CHARACTERISTIC_UUID,
+
+    BLECharacteristic *SensorIDCharacteristic = pService->createCharacteristic(
+        SensorID_UUID,
         BLECharacteristic::PROPERTY_READ |
             BLECharacteristic::PROPERTY_WRITE);
-    pServer->setCallbacks(new MyServerCallbacks());
-    pCharacteristic->setCallbacks(new MyCallbacks());
+    BLECharacteristic *WIFICharacteristic = pService->createCharacteristic(
+        WIFI_UUID,
+        BLECharacteristic::PROPERTY_READ |
+            BLECharacteristic::PROPERTY_WRITE);
+
+    pServer->setCallbacks(new BLEServerCallbacks());
+    SensorIDCharacteristic->setCallbacks(new WriteSesorIDCallbacks());
+    WIFICharacteristic->setCallbacks(new WriteWiFiCallbacks());
     pService->start();
     BLEDevice::startAdvertising();
 
@@ -77,14 +99,55 @@ void setup()
     dht.begin();
 
     // Read from EEPROM
-    EEPROM.begin(17);
-    for (int i = 0; i < 16; i++)
+    EEPROM.begin(160);
+    int i = 0;
+    for (; i < 16; i++)
     {
         sensorID += (char)EEPROM.read(i);
     }
-    EEPROM.end();
     Serial.print("Read from EEPROM, SensorID: ");
     Serial.println(sensorID);
+    char c = '';
+    int timeout_count = 0;
+    // Read Wi-Fi SSID
+    while (c != ';')
+    {
+        c = EEPROM.read(i);
+        wifi_ssid += c;
+        i++;
+        timeout_count++;
+        if (timeout_count > MAX_WIFI_LENGTH)
+        {
+            Serial.println("Could not read SSID from EEPROM!");
+            break;
+        }
+    }
+    if (timeout_count < MAX_WIFI_LENGTH)
+    {
+        Serial.print("Read from EEPROM, SSID: ");
+        Serial.println(wifi_ssid);
+    }
+    // Read Wi-Fi Password
+    timeout_count = 0;
+    i++;
+    while (c != ';')
+    {
+        c = EEPROM.read(i);
+        wifi_ssid += c;
+        i++;
+        timeout_count++;
+        if (timeout_count > MAX_WIFI_LENGTH)
+        {
+            Serial.println("Could not read password from EEPROM!");
+            break;
+        }
+    }
+    if (timeout_count < MAX_WIFI_LENGTH)
+    {
+        Serial.print("Read from EEPROM, Password: ");
+        Serial.println(wifi_password);
+    }
+    EEPROM.end();
 }
 
 void loop()
