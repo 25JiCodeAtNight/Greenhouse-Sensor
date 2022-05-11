@@ -19,6 +19,8 @@ char *wifi_password = "";
 string deviceName = "Greenhouse-Sensor";
 string sensorID = "";
 
+#define SERVER_URL = "http://test.com/api/v1/sensor"
+
 DHT dht(DHTPIN, DHTTYPE);
 
 class BLEServerCallbacks : public BLEServerCallbacks
@@ -65,7 +67,17 @@ class WriteWiFiCallbacks : public BLECharacteristicCallbacks
 {
     void onWrite(BLECharacteristic *pCharacteristic)
     {
-        
+        std::string value = pCharacteristic->getValue();    // Frontend return format: "SSID;PASSWORD;"
+        String value_s = value.c_str();
+        int length = value_s.length();
+        // Write to EEPROM
+        EEPROM.begin(160);
+        for (int i = 16; i < length; i++)
+        {
+            EEPROM.write(i, value_s[i]);
+        }
+        EEPROM.commit();
+        EEPROM.end();
     }
 }
 
