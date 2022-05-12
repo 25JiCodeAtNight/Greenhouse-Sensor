@@ -96,6 +96,17 @@ void setup()
     char c;
     int timeout_count = 0;
     EEPROM.end();
+
+    // Connect Wi-Fi
+    Serial.println("Connecting to WiFi");
+    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+    while (WiFi.status() != WL_CONNECTED)
+    {
+        delay(500);
+        Serial.print(".");
+    }
+    Serial.println("");
+    Serial.println("WiFi connected");
 }
 
 void loop()
