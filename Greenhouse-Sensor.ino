@@ -1,5 +1,6 @@
 #include <EEPROM.h>
 #include <WiFi.h>
+#include <HTTPClient.h>
 #include <BLEDevice.h>
 #include "DHT.h"
 
@@ -111,7 +112,7 @@ void setup()
 
 void loop()
 {
-    delay(4000);
+    delay(30000);   // per 30s
     float h = dht.readHumidity();
     float t = dht.readTemperature();
     if (isnan(h) || isnan(t))
@@ -125,4 +126,10 @@ void loop()
     Serial.print("Temperature: ");
     Serial.print(t);
     Serial.println(" *C");
+
+    // Send Data To Server
+    String post_url = String(SERVER_URL) + "/v1/orders/sensor/submit?" + "humidity=" + String(h) + "&" +"temperature=" + String(t);
+    HTTPClient http;
+    http.begin(post_url);
+    int httpCode = http.GET();
 }
