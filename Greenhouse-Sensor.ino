@@ -18,7 +18,7 @@
 #define DEVICE_NAME "Greenhouse-Sensor"
 String sensorID = "";
 
-#define SERVER_URL "http://test.com/api/v1/sensor"
+#define SERVER_URL "http://test.com"
 
 DHT dht(DHTPIN, DHTTYPE);
 
@@ -52,7 +52,7 @@ class WriteSesorIDCallbacks : public BLECharacteristicCallbacks
         Serial.println(value_s);
 
         // Write to EEPROM
-        EEPROM.begin(160);
+        EEPROM.begin(17);
         for (int i = 0; i < 16; i++)
         {
             EEPROM.write(i, value_s[i]);
@@ -86,7 +86,7 @@ void setup()
     dht.begin();
 
     // Read SensorID from EEPROM
-    EEPROM.begin(160);
+    EEPROM.begin(17);
     int i = 0;
     for (; i < 16; i++)
     {
@@ -112,7 +112,6 @@ void setup()
 
 void loop()
 {
-    delay(30000);   // per 30s
     float h = dht.readHumidity();
     float t = dht.readTemperature();
     if (isnan(h) || isnan(t))
@@ -128,8 +127,16 @@ void loop()
     Serial.println(" *C");
 
     // Send Data To Server
-    String post_url = String(SERVER_URL) + "/v1/orders/sensor/submit?" + "humidity=" + String(h) + "&" +"temperature=" + String(t);
+    String post_url = String(SERVER_URL) + "/v1/orders/sensor/submit?" + "sensorid=" + sensorID + "&" +"humidity=" + String(h) + "&" + "temperature=" + String(t);
     HTTPClient http;
     http.begin(post_url);
     int httpCode = http.GET();
+    if (httpCode > 0)
+    {
+        if (httpCode == HTTP_CODE_OK)
+            Serial.println("[HTTP] Data send successfully");
+        else
+            Serial.println("[HTTP] Data send failed");
+    }
+    delay(30000); // per 30s
 }
